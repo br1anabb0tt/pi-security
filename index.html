@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Brian P. Abbott | Python Project | Pi Security</title>
+	<link rel="icon"  type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAQAAVzABAEAjBQAaDwYAWjUGAGE6CQBrQQ0ATS8PAFhAJwBUQC8AbFI6AHVXPACBZk4A4NrWAPb19QAAAAAAAMmZmZmZmgAJIwAAAAAAcMIjPjA+PjAKpxIuMDMzMAm0Ii4zMzMACaIiLt3dMAAJtyIuIzPQAAm0Un5yM+IzKLRkfncy4iIotRF+dyLkIiq0QX53F+EiGrQUTkd34iIatEVu7u5iIVrBVVRBRFRVbAtGZGZla2uwAMu7u7u8vADAAwAAgAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIABAADAAwAA" />
+    <link rel="stylesheet" href="/stylesheets/styles.css">
+    <link rel="stylesheet" href="/stylesheets/project-styles.css">
+    <link rel="stylesheet" href="/stylesheets/pygment_trac.css">
+    <script src="/javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+	<!--[if lt IE 9]>
+		<script type="text/javascript">alert("Your browser does not support the canvas tag.");</script>
+	<![endif]-->
+	<script src="/javascripts/processing.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		// convenience function to get the id attribute of generated sketch html element
+		function getProcessingSketchId () { return 'starry_bg'; }
+	</script>
+	<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+		  ga('create', 'UA-48281176-2', 'br1anabb0tt.github.io');
+		  ga('send', 'pageview');
+		</script>
+  </head>
+  
+<body>
+	<div class="wrapper">
+		<header>
+			<h1>Pi Security</h1>
+			<p>next steps: add sms notification option</p>
+			<!--
+			<p class="view"><a href="http://brianpabbott.com/processing/starry-background/">view this project on my website: <small>brianpabbott.com/processing/starry-background</small></a></p>
+			<p class="view"><a href="https://github.com/br1anabb0tt/starry_bg">view this project on github: <small>br1anabb0tt/starry_bg</small></a></p>
+			<p class="view"><a href="http://br1anabb0tt.github.io/">my github home: <small>br1anabb0tt.github.io</small></a></p>
+			-->
+			<ul>
+			  <li><a href="https://github.com/br1anabb0tt/starry_bg/zipball/master">Download <strong>ZIP File</strong></a></li>
+			  <li><a href="https://github.com/br1anabb0tt/starry_bg/tarball/master">Download <strong>TAR Ball</strong></a></li>
+			</ul>
+			<ul id="navlinks">
+			  <!--<li><a href="http://brianpabbott.com/processing/starry-background/">View On My<strong>Website</strong></a></li>-->
+			  <li><a href="https://github.com/br1anabb0tt/pi-security">View On <strong>GitHub</strong></a></li>
+			  <li><a href="http://br1anabb0tt.github.io/">My GitHub <strong>Home</strong></a></li>
+			</ul>
+		</header>
+
+		<div id="content">
+			<div>
+				<canvas id="starry_bg" data-processing-sources="starry_bg.pde" 
+						width="640" height="360">
+					<p>Your browser does not support the canvas tag.</p>
+					<!-- Note: you can put any alternative content here. -->
+				</canvas>
+				<noscript>
+					<p>JavaScript is required to view the contents of this page.</p>
+				</noscript>
+			</div>			
+		</div>
+      
+		<section>
+			<h1>Static and dynamic starry background</h1>
+			<p id="description">click on image, then press [ENTER] to start proliferation of stars, press [SPACEBAR] to pause/resume</p>
+			<h2>version history</h2>
+			<ul>
+				<li><strong>v2:</strong> added user start and pause/resume functionality</li>
+				<li><strong>v1:</strong> initial version with auto-start, mouseclick ends program</li>
+			</ul>
+			<p id="sources">Source code: <a href="pi-security.py">pi-security</a> (or see below)</p>
+			<pre><code>
+# frankencode with ideas and snippets adapted from many sources including here:
+# https://www.raspberrypi.org/forums/viewtopic.php?t=86441&f=32
+
+import time
+import RPi.GPIO as GPIO
+from subprocess import call
+import string
+import smtplib
+# For guessing MIME type
+import mimetypes 
+# Import the email modules we'll need
+import email
+import email.mime.application 
+#Import sys to deal with command line arguments
+import sys
+from subprocess import call  
+
+GPIO.setwarnings (False)
+# using BCM not BOARD here, else pin 7 should be 26
+GPIO.setmode(GPIO.BCM)
+time_stamp = time.time() #for debouncing
+
+#set pins
+#pin 7 = motion sensor 1, pin 8 = motion sensor 2, pin 14 = dummy
+GPIO.setup (7, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup (8, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup (14, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+counter = 1
+
+def take_pic(sensor):	
+	global counter
+	call(["raspistill -vf -hf -o image" + sensor + str(counter) + ".jpg"], shell=True)
+#	time.sleep(2) #wait 2 seconds before continuing
+	call(["raspivid -w 1024 -h 576 -fps 60 -t 20000 -o vid" + sensor + str(counter) + ".h264"], shell=True)
+#	time.sleep(35) #wait 35 seconds before continuing
+	
+
+def drop_box(sensor):	
+	global counter
+	photofile = "/path/to/dropbox_uploader.sh upload /path/to/vids" + sensor + str(counter) + ".h264 vid" + sensor + str(counter) + ".h264"
+	call ([photofile], shell=True)
+#	time.sleep(35) #wait 35 seconds before continuing
+
+
+def send_text(details):
+	# Create a text/plain message
+	msg = email.mime.Multipart.MIMEMultipart()
+	msg['Subject'] = 'Security Alert'
+	msg['From'] = 'any@email.address'
+	msg['To'] = 'to@email.address'
+
+ 
+	# The main body is just another attachment
+	body = email.mime.Text.MIMEText("""body text here""")
+	msg.attach(body)
+ 
+	# use jpg not pdf
+ 
+	#directory=sys.argv[1]
+	directory = 'imagemotion' + str(counter) + '.jpg'
+ 
+	# Split directory into fields separated by / to subtract filename
+ 
+	spl_dir=directory.split('/')
+ 
+	# We attach the name of the file to filename by taking the last
+	# position of the fragmented string, which is, indeed, the name
+	# of the file we've selected
+ 
+	filename=spl_dir[len(spl_dir)-1]
+ 
+	# We'll do the same but this time to extract the file format (pdf, epub, docx...)
+ 
+	spl_type=directory.split('.')
+ 
+	type=spl_type[len(spl_type)-1]
+ 
+	fp=open(directory,'rb')
+	att = email.mime.application.MIMEApplication(fp.read(),_subtype=type)
+	fp.close()
+	att.add_header('Content-Disposition','attachment',filename=filename)
+	msg.attach(att)
+ 
+	# send via Gmail server
+	s = smtplib.SMTP('smtp.gmail.com:587')
+	s.starttls()
+	s.login('to@email.address','password')
+	s.sendmail('any.email.address','to@email.address', msg.as_string())
+	s.quit()
+
+
+def motion_callback(channel):
+    global time_stamp
+    global counter
+    time_now = time.time()
+    if (time_now - time_stamp) >= 0.3: #check for debouncing
+	print "Motion detector detected GPIO 7 " + str(counter)
+	take_pic("motion")
+#	time.sleep(5) #wait 5 second for pic to show up in dir before trying to attach
+	drop_box("motion")
+	send_text("Motion detector")
+	counter +=1   
+	time_stamp = time_now
+	
+def motion_callback2(channel):
+    global time_stamp
+    global counter
+    time_now = time.time()
+    if (time_now - time_stamp) >= 0.3: #check for debouncing
+	print "Motion detector detected GPIO 8 " + str(counter)
+	take_pic("motion")
+#	time.sleep(5) #wait 5 second for pic to show up in dir before trying to attach
+	drop_box("motion")
+	send_text("Motion detector")
+	counter +=1   
+	time_stamp = time_now
+
+#main body
+raw_input("Press enter to start program\n")
+
+GPIO.add_event_detect(7, GPIO.RISING, callback=motion_callback)
+GPIO.add_event_detect(8, GPIO.RISING, callback=motion_callback2)
+
+
+# pressure switch ends the program
+# you could easily add a unique callback for the pressure switch
+# and add another switch just to turn off the network
+try:
+    print "Waiting for sensors..."
+    GPIO.wait_for_edge(14, GPIO.RISING)
+except KeyboardInterrupt:
+    GPIO.cleanup()
+
+GPIO.cleanup()
+			</code></pre>
+		</section>
+	</div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/br1anabb0tt">br1anabb0tt</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->   
+</body>
+
+</html>
